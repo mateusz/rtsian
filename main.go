@@ -24,8 +24,8 @@ var (
 	mobs       []mobile
 	tmx        *tiled.Map
 	p1         player
-	monW float64
-	monH float64
+	monW       float64
+	monH       float64
 )
 
 func main() {
@@ -38,7 +38,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	tmx, err = tiled.LoadFromFile(fmt.Sprintf("%s/../assets/map1.tmx", workDir))
+	tmx, err = tiled.LoadFromFile(fmt.Sprintf("%s/../assets/world.tmx", workDir))
 	if err != nil {
 		fmt.Printf("Error parsing map: %s\n", err)
 		os.Exit(2)
@@ -87,7 +87,7 @@ func run() {
 	// Zoom in to get nice pixels
 	win.SetSmooth(false)
 	win.SetMatrix(pixel.IM.Scaled(pixel.ZV, pixSize))
-	win.SetMousePosition(pixel.Vec{X:monW/2.0,Y:monH/2.0})
+	win.SetMousePosition(pixel.Vec{X: monW / 2.0, Y: monH / 2.0})
 
 	worldMap := pixelgl.NewCanvas(pixel.R(0, 0, float64(tmx.Width*tmx.TileWidth), float64(tmx.Height*tmx.TileHeight)))
 	drawMap(worldMap)
@@ -145,7 +145,6 @@ func run() {
 			mob.Draw(p1view)
 		}
 
-		// Draw  views onto respective halves of the screen
 		p1view.Draw(win, pixel.IM.Moved(pixel.Vec{
 			X: p1view.Bounds().W() / 2,
 			Y: p1view.Bounds().H() / 2,
