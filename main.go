@@ -14,15 +14,16 @@ import (
 )
 
 var (
-	workDir    string
-	monW       float64
-	monH       float64
-	pixSize    float64
-	mobSprites spriteset
-	mobs       []mobile
-	p1         player
-	gameWorld  world
-	gameHud    hud
+	workDir       string
+	monW          float64
+	monH          float64
+	pixSize       float64
+	mobSprites    spriteset
+	mobs          []mobile
+	cursorSprites spriteset
+	p1            player
+	gameWorld     world
+	gameHud       hud
 )
 
 func main() {
@@ -41,6 +42,12 @@ func main() {
 	mobSprites, err = newSpritesetFromTsx(fmt.Sprintf("%s/../assets", workDir), "mobs.tsx")
 	if err != nil {
 		fmt.Printf("Error loading mobs: %s\n", err)
+		os.Exit(2)
+	}
+
+	cursorSprites, err = newSpritesetFromTsx(fmt.Sprintf("%s/../assets", workDir), "cursors.tsx")
+	if err != nil {
+		fmt.Printf("Error loading cursors: %s\n", err)
 		os.Exit(2)
 	}
 
@@ -101,11 +108,12 @@ func run() {
 		p1view.SetMatrix(cam1)
 
 		// Update world state
-		DoodadInput(win, cam1)
-		p1.Input(win)
+		UnitInput(win, cam1)
+		p1.Input(win, cam1)
 		p1.Update(dt)
 		gameHud.Update(dt)
 		for _, mob := range mobs {
+			mob.Input(win, cam1)
 			mob.Update(dt)
 		}
 

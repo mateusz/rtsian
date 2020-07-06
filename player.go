@@ -16,7 +16,7 @@ func (p *player) Update(dt float64) {
 	p.position = p.position.Add(p.scrolling.Scaled(dt))
 }
 
-func (p *player) Input(win *pixelgl.Window) {
+func (p *player) Input(win *pixelgl.Window, cam pixel.Matrix) {
 	p.scrolling = pixel.ZV
 	if win.MouseInsideWindow() {
 		if win.MousePosition().X < p.scrollHotZone {

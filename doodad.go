@@ -11,18 +11,12 @@ type doodad struct {
 	spriteID uint32
 }
 
-func DoodadInput(win *pixelgl.Window, cam pixel.Matrix) {
-	if win.JustPressed(pixelgl.MouseButtonLeft) {
-		d := doodad{
-			position: cam.Unproject(win.MousePosition().Scaled(1.0 / pixSize)),
-			sprites:  &mobSprites,
-			spriteID: 0,
-		}
-		mobs = append(mobs, &d)
-	}
+func (d *doodad) Input(win *pixelgl.Window, cam pixel.Matrix) {
+
 }
 
 func (d *doodad) Update(dt float64) {
+
 }
 
 func (d *doodad) Draw(t pixel.Target) {
