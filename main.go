@@ -5,7 +5,6 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
-	"sort"
 	"time"
 
 	"github.com/faiface/pixel"
@@ -19,11 +18,11 @@ var (
 	monH          float64
 	pixSize       float64
 	mobSprites    spriteset
-	mobs          []mobile
 	cursorSprites spriteset
 	p1            player
 	gameWorld     world
 	gameHud       hud
+	gameMobiles   mobiles
 )
 
 func main() {
@@ -112,7 +111,7 @@ func run() {
 		p1.Input(win, cam1)
 		p1.Update(dt)
 		gameHud.Update(dt)
-		for _, mob := range mobs {
+		for _, mob := range gameMobiles.List {
 			mob.Input(win, cam1)
 			mob.Update(dt)
 		}
@@ -129,10 +128,7 @@ func run() {
 		}))
 
 		// Draw transformed mobs
-		sort.Slice(mobs, func(i, j int) bool {
-			return mobs[i].GetZ() > mobs[j].GetZ()
-		})
-		for _, mob := range mobs {
+		for _, mob := range gameMobiles.ByZ() {
 			mob.Draw(p1view)
 		}
 

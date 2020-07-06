@@ -24,5 +24,5 @@ func (h *hud) Draw(t pixel.Target) {
 }
 
 func (h *hud) Update(dt float64) {
-	h.mobCount = len(mobs)
+	h.mobCount = gameMobiles.Len()
 }

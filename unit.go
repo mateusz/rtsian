@@ -7,15 +7,17 @@ import (
 
 type unit struct {
 	position pixel.Vec
-	target   pixel.Vec
-	d        float64
-	v        pixel.Vec
+	target   pixel.Vec // position of target
+	d        float64   // distance to target
+	v        pixel.Vec // velocity vector
 	sprites  *spriteset
 	spriteID uint32
 	selected bool
 }
 
 func UnitInput(win *pixelgl.Window, cam pixel.Matrix) {
+	mp := cam.Unproject(win.MousePosition().Scaled(1.0 / pixSize))
+
 	if win.JustPressed(pixelgl.KeyQ) {
 		u := unit{
 			position: cam.Unproject(win.MousePosition().Scaled(1.0 / pixSize)),
@@ -23,37 +25,48 @@ func UnitInput(win *pixelgl.Window, cam pixel.Matrix) {
 			spriteID: 0,
 		}
 		u.target = u.position
-		mobs = append(mobs, &u)
+		gameMobiles.Add(&u)
 	}
+
 	if win.JustPressed(pixelgl.MouseButtonRight) {
-		for _, m := range mobs {
-			unit, ok := m.(*unit)
+		for _, m := range gameMobiles.List {
+			u, ok := m.(*unit)
 			if !ok {
 				continue
 			}
 
-			if unit.selected {
-				unit.target = cam.Unproject(win.MousePosition().Scaled(1.0 / pixSize))
-				unit.v = unit.target.Sub(unit.position).Scaled(0.01)
-				unit.d = unit.target.Sub(unit.position).Len()
+			if u.selected {
+				u.target = mp
+				mv := u.target.Sub(u.position)
+				u.v = mv.Unit().Scaled(1.0)
+				u.d = mv.Len()
+			}
+		}
+	}
+
+	if win.JustPressed(pixelgl.MouseButtonLeft) {
+		selectConsumed := false
+		for _, m := range gameMobiles.ByReverseZ() {
+			u, ok := m.(*unit)
+			if !ok {
+				continue
+			}
+			if !selectConsumed &&
+				mp.X > u.position.X-u.sprites.sprites[u.spriteID].Frame().W()/2.0 &&
+				mp.X < u.position.X+u.sprites.sprites[u.spriteID].Frame().W()/2.0 &&
+				mp.Y > u.position.Y-u.sprites.sprites[u.spriteID].Frame().H()/2.0 &&
+				mp.Y < u.position.Y+u.sprites.sprites[u.spriteID].Frame().H()/2.0 {
+				// Hit
+				u.selected = !u.selected
+				selectConsumed = true
+			} else {
+				u.selected = false
 			}
 		}
 	}
 }
 
 func (u *unit) Input(win *pixelgl.Window, cam pixel.Matrix) {
-	if win.JustPressed(pixelgl.MouseButtonLeft) {
-		mp := cam.Unproject(win.MousePosition().Scaled(1.0 / pixSize))
-
-		if mp.X > u.position.X-u.sprites.sprites[u.spriteID].Frame().W()/2.0 &&
-			mp.X < u.position.X+u.sprites.sprites[u.spriteID].Frame().W()/2.0 &&
-			mp.Y > u.position.Y-u.sprites.sprites[u.spriteID].Frame().H()/2.0 &&
-			mp.Y < u.position.Y+u.sprites.sprites[u.spriteID].Frame().H()/2.0 {
-			// Hit
-			u.selected = !u.selected
-		}
-
-	}
 }
 
 func (u *unit) Update(dt float64) {
@@ -74,7 +87,7 @@ func (u *unit) Draw(t pixel.Target) {
 }
 
 func (u *unit) GetZ() float64 {
-	return u.position.Y
+	return -u.position.Y
 }
 
 func (u *unit) GetY() float64 {
