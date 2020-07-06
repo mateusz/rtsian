@@ -10,5 +10,4 @@ type mobile interface {
 	GetZ() float64
 	GetX() float64
 	GetY() float64
-	Colliding(mobile, float64) bool
 }

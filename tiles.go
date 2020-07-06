@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/xml"
 	"errors"
-	"fmt"
 	"image"
 	"os"
 	"path/filepath"
@@ -110,37 +109,4 @@ func newSpritesetFromTileset(basePath string, ts *tiled.Tileset) (spriteset, err
 	}
 
 	return spr, nil
-}
-
-// Get sprite from file.
-func load(path string) (*pixel.Sprite, error) {
-	file, err := os.Open(tmx.GetFileFullPath(path))
-	if err != nil {
-		return nil, fmt.Errorf("error opening car: %s", err)
-	}
-	defer file.Close()
-	img, _, err := image.Decode(file)
-	if err != nil {
-		return nil, fmt.Errorf("error decoding car: %s", err)
-	}
-	pic := pixel.PictureDataFromImage(img)
-	return pixel.NewSprite(pic, pic.Bounds()), nil
-}
-
-func findTileInTileset(lt *tiled.LayerTile) (*tiled.TilesetTile, error) {
-	for _, t := range lt.Tileset.Tiles {
-		if t.ID == lt.ID {
-			return t, nil
-		}
-	}
-
-	return nil, fmt.Errorf("Something is very wrong, tile ID '%d' not found in the tileset", lt.ID)
-}
-
-// Convert tile coords (x,y) to world coordinates.
-func tileVec(x int, y int) pixel.Vec {
-	// Some offesting due to the tiles being referenced via the centre
-	ox := tmx.TileWidth / 2
-	oy := tmx.TileHeight / 2
-	return pixel.V(float64(x*(tmx.TileWidth)+ox), float64(y*tmx.TileHeight+oy))
 }

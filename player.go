@@ -1,33 +1,35 @@
 package main
 
-import(
+import (
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
 )
 
-var (
-	scrollSpeed float64
-	scrollHotZone float64
-)
-
 type player struct {
-	wp pixel.Vec
+	position      pixel.Vec
+	scrollSpeed   float64
+	scrollHotZone float64
+	scrolling     pixel.Vec
 }
 
-func (p *player) Update(dt float64, win *pixelgl.Window) {
+func (p *player) Update(dt float64) {
+	p.position = p.position.Add(p.scrolling.Scaled(dt))
+}
+
+func (p *player) Input(win *pixelgl.Window) {
+	p.scrolling = pixel.ZV
 	if win.MouseInsideWindow() {
-		if win.MousePosition().X < scrollHotZone {
-			p.wp.X -= scrollSpeed * dt
+		if win.MousePosition().X < p.scrollHotZone {
+			p.scrolling.X = -p.scrollSpeed
 		}
-		if win.MousePosition().X > monW-scrollHotZone {
-			p.wp.X += scrollSpeed * dt
+		if win.MousePosition().X > monW-p.scrollHotZone {
+			p.scrolling.X = p.scrollSpeed
 		}
-		if win.MousePosition().Y < scrollHotZone {
-			p.wp.Y -= scrollSpeed * dt
+		if win.MousePosition().Y < p.scrollHotZone {
+			p.scrolling.Y = -p.scrollSpeed
 		}
-		if win.MousePosition().Y > monH-scrollHotZone {
-			p.wp.Y += scrollSpeed * dt
+		if win.MousePosition().Y > monH-p.scrollHotZone {
+			p.scrolling.Y = p.scrollSpeed
 		}
 	}
-
 }
