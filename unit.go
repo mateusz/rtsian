@@ -3,6 +3,7 @@ package main
 import (
 	"container/list"
 	"log"
+	"math"
 	"time"
 
 	"github.com/faiface/pixel"
@@ -10,28 +11,30 @@ import (
 )
 
 const (
-	MOBS_VEHICLE_ID         = 0
-	MOBS_EXPLOSION_START_ID = 9
-	MOBS_EXPLOSION_END_ID   = 16
+	MOBS_TANK_START_ID      = 20
+	MOBS_EXPLOSION_START_ID = 19
+	MOBS_EXPLOSION_END_ID   = 19
 	CURSOR_UNIT_MARKER      = 0
 )
 
 var (
-	mobs_explosion_frames = MOBS_EXPLOSION_END_ID - MOBS_EXPLOSION_START_ID
+	mobsExplosionFrames = MOBS_EXPLOSION_END_ID - MOBS_EXPLOSION_START_ID + 1
+	rescueBottomPixels  = pixel.IM.Scaled(pixel.Vec{X: 8.0, Y: 8.0}, 1.01)
 )
 
 type unit struct {
-	position       pixel.Vec
-	target         pixel.Vec // position of current movement target
-	d              float64   // distance to current movement target
-	v              pixel.Vec // velocity vector
-	pathingTarget  pixel.Vec
-	pathing        *list.List
-	sprites        *spriteset
-	spriteID       uint32
-	selected       bool
-	exploding      bool
-	explodingSince time.Time
+	position        pixel.Vec
+	target          pixel.Vec // position of current movement target
+	d               float64   // distance to current movement target
+	v               pixel.Vec // velocity vector
+	pathingTarget   pixel.Vec
+	pathing         *list.List
+	sprites         *spriteset
+	spriteID        uint32
+	selected        bool
+	exploding       bool
+	explodingSince  time.Time
+	stickyDirOffset uint32
 }
 
 func UnitInput(win *pixelgl.Window, cam pixel.Matrix) {
@@ -42,7 +45,7 @@ func UnitInput(win *pixelgl.Window, cam pixel.Matrix) {
 		u := unit{
 			position: mpa,
 			sprites:  &mobSprites,
-			spriteID: MOBS_VEHICLE_ID,
+			spriteID: MOBS_TANK_START_ID,
 		}
 		u.target = u.position
 		gameMobiles.Add(&u)
@@ -107,8 +110,8 @@ func (u *unit) Input(win *pixelgl.Window, cam pixel.Matrix) {
 
 func (u *unit) Update(dt float64) {
 	if u.exploding {
-		explosionFrame := uint32(time.Now().Sub(u.explodingSince) / (50 * time.Millisecond))
-		if explosionFrame >= uint32(mobs_explosion_frames) {
+		explosionFrame := uint32(time.Now().Sub(u.explodingSince) / (100 * time.Millisecond))
+		if explosionFrame >= uint32(mobsExplosionFrames) {
 			// Totally exploded.
 			gameMobiles.Remove(u)
 		}
@@ -119,6 +122,8 @@ func (u *unit) Update(dt float64) {
 	} else {
 		u.applyPath()
 	}
+
+	u.updateDirOffset()
 }
 
 func (u *unit) applyPath() {
@@ -147,18 +152,33 @@ func (u *unit) applyPath() {
 	u.v = mv.Unit().Scaled(1.0)
 }
 
+func (u *unit) updateDirOffset() {
+	if u.v.X < 0 {
+		u.stickyDirOffset = 0
+	}
+	if u.v.X > 0 {
+		u.stickyDirOffset = 2
+	}
+	if u.v.Y > 0 {
+		u.stickyDirOffset = 1
+	}
+	if u.v.Y < 0 {
+		u.stickyDirOffset = 3
+	}
+}
+
 func (u *unit) Draw(t pixel.Target) {
-	explosionFrame := uint32(time.Now().Sub(u.explodingSince) / (50 * time.Millisecond))
-	if !u.exploding || explosionFrame < uint32(mobs_explosion_frames/2) {
-		u.sprites.sprites[u.spriteID].Draw(t, pixel.IM.Moved(u.position))
+	explosionFrame := uint32(time.Now().Sub(u.explodingSince) / (100 * time.Millisecond))
+	if !u.exploding || explosionFrame < uint32(math.Ceil(float64(mobsExplosionFrames)/2.0)) {
+		u.sprites.sprites[u.spriteID+u.stickyDirOffset].Draw(t, rescueBottomPixels.Moved(u.position))
 	}
 	if u.exploding {
-		if explosionFrame < uint32(mobs_explosion_frames) {
-			u.sprites.sprites[9+explosionFrame].Draw(t, pixel.IM.Moved(u.position))
+		if explosionFrame < uint32(mobsExplosionFrames) {
+			u.sprites.sprites[MOBS_EXPLOSION_START_ID+explosionFrame].Draw(t, rescueBottomPixels.Moved(u.position))
 		}
 	}
 	if u.selected {
-		cursorSprites.sprites[CURSOR_UNIT_MARKER].Draw(t, pixel.IM.Moved(u.position))
+		cursorSprites.sprites[CURSOR_UNIT_MARKER].Draw(t, rescueBottomPixels.Moved(u.position))
 	}
 }
 
