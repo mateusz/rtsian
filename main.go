@@ -57,6 +57,8 @@ func main() {
 	p1.scrollSpeed = 200.0
 	p1.scrollHotZone = 10.0
 
+	PatherInit()
+
 	pixelgl.Run(run)
 }
 
@@ -107,6 +109,7 @@ func run() {
 		p1view.SetMatrix(cam1)
 
 		// Update world state
+		PatherBuildState()
 		UnitInput(win, cam1)
 		p1.Input(win, cam1)
 		p1.Update(dt)

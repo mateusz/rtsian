@@ -1,26 +1,32 @@
 package main
 
 import (
+	"container/list"
+	"log"
+
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
 )
 
 type unit struct {
-	position pixel.Vec
-	target   pixel.Vec // position of target
-	d        float64   // distance to target
-	v        pixel.Vec // velocity vector
-	sprites  *spriteset
-	spriteID uint32
-	selected bool
+	position      pixel.Vec
+	target        pixel.Vec // position of current movement target
+	d             float64   // distance to current movement target
+	v             pixel.Vec // velocity vector
+	pathingTarget pixel.Vec
+	pathing       *list.List
+	sprites       *spriteset
+	spriteID      uint32
+	selected      bool
 }
 
 func UnitInput(win *pixelgl.Window, cam pixel.Matrix) {
 	mp := cam.Unproject(win.MousePosition().Scaled(1.0 / pixSize))
 
-	if win.JustPressed(pixelgl.KeyQ) {
+	if win.JustPressed(pixelgl.KeyW) {
+		mpa := gameWorld.alignToTile(mp)
 		u := unit{
-			position: cam.Unproject(win.MousePosition().Scaled(1.0 / pixSize)),
+			position: mpa,
 			sprites:  &mobSprites,
 			spriteID: 0,
 		}
@@ -36,10 +42,8 @@ func UnitInput(win *pixelgl.Window, cam pixel.Matrix) {
 			}
 
 			if u.selected {
-				u.target = mp
-				mv := u.target.Sub(u.position)
-				u.v = mv.Unit().Scaled(1.0)
-				u.d = mv.Len()
+				u.pathingTarget = mp
+				u.pathing = FindPath(u, u.pathingTarget)
 			}
 		}
 	}
@@ -60,7 +64,9 @@ func UnitInput(win *pixelgl.Window, cam pixel.Matrix) {
 				u.selected = !u.selected
 				selectConsumed = true
 			} else {
-				u.selected = false
+				if !win.Pressed(pixelgl.KeyLeftShift) && !win.Pressed(pixelgl.KeyRightShift) {
+					u.selected = false
+				}
 			}
 		}
 	}
@@ -70,13 +76,38 @@ func (u *unit) Input(win *pixelgl.Window, cam pixel.Matrix) {
 }
 
 func (u *unit) Update(dt float64) {
-	u.position = u.position.Add(u.v)
-	u.d -= u.v.Len()
-	if u.d < 0.0 {
-		u.v = pixel.ZV
-		u.d = 0.0
-		u.target = pixel.ZV
+	if u.d > 0.0 {
+		u.position = u.position.Add(u.v)
+		u.d -= u.v.Len()
+	} else {
+		u.applyPath()
 	}
+}
+
+func (u *unit) applyPath() {
+	if u.pathing == nil || u.pathing.Len() == 0 {
+		u.target = u.position
+		u.d = 0.0
+		u.v = pixel.ZV
+		u.pathing = nil
+		return
+	}
+
+	u.pathing = FindPath(u, u.pathingTarget)
+	if u.pathing.Len() == 0 {
+		return
+	}
+
+	// Next path step
+	n, ok := u.pathing.Remove(u.pathing.Front()).(*patherNode)
+	if !ok {
+		log.Panic("Fatal: pathing list contained non-patherNode!")
+	}
+
+	u.target = gameWorld.tileToVec(n.X, n.Y)
+	mv := u.target.Sub(u.position)
+	u.d = mv.Len()
+	u.v = mv.Unit().Scaled(1.0)
 }
 
 func (u *unit) Draw(t pixel.Target) {
