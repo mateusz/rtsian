@@ -3,21 +3,35 @@ package main
 import (
 	"container/list"
 	"log"
+	"time"
 
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
 )
 
+const (
+	MOBS_VEHICLE_ID         = 0
+	MOBS_EXPLOSION_START_ID = 9
+	MOBS_EXPLOSION_END_ID   = 16
+	CURSOR_UNIT_MARKER      = 0
+)
+
+var (
+	mobs_explosion_frames = MOBS_EXPLOSION_END_ID - MOBS_EXPLOSION_START_ID
+)
+
 type unit struct {
-	position      pixel.Vec
-	target        pixel.Vec // position of current movement target
-	d             float64   // distance to current movement target
-	v             pixel.Vec // velocity vector
-	pathingTarget pixel.Vec
-	pathing       *list.List
-	sprites       *spriteset
-	spriteID      uint32
-	selected      bool
+	position       pixel.Vec
+	target         pixel.Vec // position of current movement target
+	d              float64   // distance to current movement target
+	v              pixel.Vec // velocity vector
+	pathingTarget  pixel.Vec
+	pathing        *list.List
+	sprites        *spriteset
+	spriteID       uint32
+	selected       bool
+	exploding      bool
+	explodingSince time.Time
 }
 
 func UnitInput(win *pixelgl.Window, cam pixel.Matrix) {
@@ -28,7 +42,7 @@ func UnitInput(win *pixelgl.Window, cam pixel.Matrix) {
 		u := unit{
 			position: mpa,
 			sprites:  &mobSprites,
-			spriteID: 0,
+			spriteID: MOBS_VEHICLE_ID,
 		}
 		u.target = u.position
 		gameMobiles.Add(&u)
@@ -44,6 +58,22 @@ func UnitInput(win *pixelgl.Window, cam pixel.Matrix) {
 			if u.selected {
 				u.pathingTarget = mp
 				u.pathing = FindPath(u, u.pathingTarget)
+			}
+		}
+	}
+
+	if win.JustPressed(pixelgl.KeyQ) {
+		for _, m := range gameMobiles.List {
+			u, ok := m.(*unit)
+			if !ok {
+				continue
+			}
+
+			if u.selected {
+				u.selected = false
+				u.exploding = true
+				u.explodingSince = time.Now()
+				u.pathing = nil
 			}
 		}
 	}
@@ -76,6 +106,13 @@ func (u *unit) Input(win *pixelgl.Window, cam pixel.Matrix) {
 }
 
 func (u *unit) Update(dt float64) {
+	if u.exploding {
+		explosionFrame := uint32(time.Now().Sub(u.explodingSince) / (50 * time.Millisecond))
+		if explosionFrame >= uint32(mobs_explosion_frames) {
+			// Totally exploded.
+			gameMobiles.Remove(u)
+		}
+	}
 	if u.d > 0.0 {
 		u.position = u.position.Add(u.v)
 		u.d -= u.v.Len()
@@ -111,9 +148,17 @@ func (u *unit) applyPath() {
 }
 
 func (u *unit) Draw(t pixel.Target) {
-	u.sprites.sprites[u.spriteID].Draw(t, pixel.IM.Moved(u.position))
+	explosionFrame := uint32(time.Now().Sub(u.explodingSince) / (50 * time.Millisecond))
+	if !u.exploding || explosionFrame < uint32(mobs_explosion_frames/2) {
+		u.sprites.sprites[u.spriteID].Draw(t, pixel.IM.Moved(u.position))
+	}
+	if u.exploding {
+		if explosionFrame < uint32(mobs_explosion_frames) {
+			u.sprites.sprites[9+explosionFrame].Draw(t, pixel.IM.Moved(u.position))
+		}
+	}
 	if u.selected {
-		cursorSprites.sprites[0].Draw(t, pixel.IM.Moved(u.position))
+		cursorSprites.sprites[CURSOR_UNIT_MARKER].Draw(t, pixel.IM.Moved(u.position))
 	}
 }
 

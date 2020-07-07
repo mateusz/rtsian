@@ -40,6 +40,16 @@ func (m *mobiles) Add(mob mobile) {
 	m.List = append(m.List, mob)
 }
 
+func (m *mobiles) Remove(mob mobile) {
+	for i, ml := range m.List {
+		if mob == ml {
+			copy(m.List[i:], m.List[i+1:])
+			m.List = m.List[:len(m.List)-1]
+			break
+		}
+	}
+}
+
 func (m *mobiles) Len() int {
 	return len(m.List)
 }
