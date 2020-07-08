@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"image"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -43,6 +44,25 @@ func fillMissingMapPieces(m *tiled.Map) (spriteset, error) {
 	}
 
 	return spr, nil
+}
+
+func loadObjects(m *tiled.Map) {
+	for _, o := range m.ObjectGroups[0].Objects {
+		lt, err := m.TileGIDToTile(o.GID)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if lt.ID >= MOBS_TANK_START_ID && lt.ID < MOBS_TANK_START_ID+4 {
+			p := gameWorld.alignToTile(pixel.Vec{X: o.X, Y: o.Y})
+			u := unit{
+				position: p,
+				sprites:  &mobSprites,
+				spriteID: MOBS_TANK_START_ID,
+			}
+			u.target = u.position
+			gameMobiles.Add(&u)
+		}
+	}
 }
 
 func newSpritesetFromTsx(basePath, path string) (spriteset, error) {

@@ -153,17 +153,20 @@ func (u *unit) applyPath() {
 }
 
 func (u *unit) updateDirOffset() {
-	if u.v.X < 0 {
-		u.stickyDirOffset = 0
-	}
-	if u.v.X > 0 {
-		u.stickyDirOffset = 2
-	}
-	if u.v.Y > 0 {
-		u.stickyDirOffset = 1
-	}
-	if u.v.Y < 0 {
-		u.stickyDirOffset = 3
+	if math.Abs(u.v.X) > math.Abs(u.v.Y) {
+		if u.v.X < 0 {
+			u.stickyDirOffset = 0
+		}
+		if u.v.X > 0 {
+			u.stickyDirOffset = 2
+		}
+	} else {
+		if u.v.Y > 0 {
+			u.stickyDirOffset = 1
+		}
+		if u.v.Y < 0 {
+			u.stickyDirOffset = 3
+		}
 	}
 }
 

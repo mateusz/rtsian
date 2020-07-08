@@ -44,6 +44,8 @@ func main() {
 		os.Exit(2)
 	}
 
+	loadObjects(gameWorld.tiles)
+
 	cursorSprites, err = newSpritesetFromTsx(fmt.Sprintf("%s/../assets", workDir), "cursors.tsx")
 	if err != nil {
 		fmt.Printf("Error loading cursors: %s\n", err)
