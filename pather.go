@@ -3,6 +3,7 @@ package main
 import (
 	"container/list"
 	"math"
+	"strconv"
 
 	"github.com/beefsack/go-astar"
 	"github.com/faiface/pixel"
@@ -34,10 +35,14 @@ func GetPatherNodeFromVec(v pixel.Vec) *patherNode {
 func PatherBuildState() {
 	for y := 0; y < gameWorld.tiles.Height; y++ {
 		for x := 0; x < gameWorld.tiles.Width; x++ {
+			c, err := strconv.ParseFloat(gameWorld.tilesetTileAt(x, y).Properties.GetString("movd"), 64)
+			if err != nil {
+				c = 1.0
+			}
 			patherMap[y*gameWorld.tiles.Width+x] = &patherNode{
 				X:    x,
 				Y:    y,
-				Cost: 1.0,
+				Cost: c,
 			}
 		}
 	}
