@@ -149,7 +149,7 @@ func (u *unit) applyPath() {
 	u.target = gameWorld.tileToVec(n.X, n.Y)
 	mv := u.target.Sub(u.position)
 	u.d = mv.Len()
-	u.v = mv.Unit().Scaled(1.0)
+	u.v = mv.Unit().Scaled(1.0 / n.Cost)
 }
 
 func (u *unit) updateDirOffset() {

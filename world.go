@@ -40,13 +40,14 @@ func (w *world) Draw(t pixel.Target) {
 	for y := 0; y < w.tiles.Height; y++ {
 		for x := 0; x < w.tiles.Width; x++ {
 			lt := l.Tiles[y*w.tiles.Width+x]
-			w.sprites.sprites[lt.ID].Draw(t, pixel.IM.Moved(w.tileToVec(x, w.tiles.Height-y-1)))
+			w.sprites.sprites[lt.ID].Draw(t, pixel.IM.Moved(w.tileToVec(x, y)))
 		}
 	}
 }
 
 // Convert tile coords (x,y) to world coordinates.
 func (w *world) tileToVec(x int, y int) pixel.Vec {
+	y = w.flipY(y)
 	// Some offesting due to the tiles being referenced via the centre
 	ox := w.tiles.TileWidth / 2
 	oy := w.tiles.TileHeight / 2
@@ -57,11 +58,13 @@ func (w *world) tileToVec(x int, y int) pixel.Vec {
 func (w *world) vecToTile(p pixel.Vec) (x int, y int) {
 	x = int(p.X) / w.tiles.TileWidth
 	y = int(p.Y) / w.tiles.TileHeight
+	y = w.flipY(y)
 	return
 }
 
 func (w *world) alignToTile(p pixel.Vec) pixel.Vec {
 	x, y := w.vecToTile(p)
+	y = w.flipY(y)
 	return pixel.Vec{
 		X: float64(x*w.tiles.TileWidth) + float64(w.tiles.TileWidth)/2.0,
 		Y: float64(y*w.tiles.TileHeight) + float64(w.tiles.TileHeight)/2.0,
@@ -83,4 +86,8 @@ func (w *world) layerToTilesetTile(lt *tiled.LayerTile) *tiled.TilesetTile {
 
 func (w *world) tilesetTileAt(x, y int) *tiled.TilesetTile {
 	return w.layerToTilesetTile(w.tiles.Layers[0].Tiles[x+y*w.tiles.Width])
+}
+
+func (w *world) flipY(y int) int {
+	return w.tiles.Height - y - 1
 }
