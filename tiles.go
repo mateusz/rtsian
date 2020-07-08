@@ -53,7 +53,7 @@ func loadObjects(m *tiled.Map) {
 			log.Fatal(err)
 		}
 		if lt.ID >= MOBS_TANK_START_ID && lt.ID < MOBS_TANK_START_ID+4 {
-			p := gameWorld.alignToTile(pixel.Vec{X: o.X, Y: o.Y})
+			p := gameWorld.alignToTile(pixel.Vec{X: o.X + 10.0, Y: tiledFlipY(m, o.Y) + 10.0})
 			u := unit{
 				position: p,
 				sprites:  &mobSprites,
@@ -129,4 +129,8 @@ func newSpritesetFromTileset(basePath string, ts *tiled.Tileset) (spriteset, err
 	}
 
 	return spr, nil
+}
+
+func tiledFlipY(t *tiled.Map, y float64) float64 {
+	return float64(t.Height*t.TileHeight) - y
 }
