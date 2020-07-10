@@ -13,16 +13,18 @@ import (
 )
 
 var (
-	workDir       string
-	monW          float64
-	monH          float64
-	pixSize       float64
-	mobSprites    spriteset
-	cursorSprites spriteset
-	p1            player
-	gameWorld     world
-	gameHud       hud
-	gameMobiles   mobiles
+	workDir           string
+	monW              float64
+	monH              float64
+	pixSize           float64
+	mobSprites        spriteset
+	cursorSprites     spriteset
+	p1                player
+	gameWorld         world
+	gameHud           hud
+	gameEntities      entities
+	gameDrawables     drawables
+	gamePositionables positionables
 )
 
 func main() {
@@ -58,6 +60,7 @@ func main() {
 	}
 	p1.scrollSpeed = 200.0
 	p1.scrollHotZone = 10.0
+	p1.army = 1
 
 	PatherInit()
 
@@ -116,9 +119,17 @@ func run() {
 		p1.Input(win, cam1)
 		p1.Update(dt)
 		gameHud.Update(dt)
-		for _, mob := range gameMobiles.List {
-			mob.Input(win, cam1)
-			mob.Update(dt)
+
+		for _, ent := range gameEntities.List {
+			inp, ok := ent.(inputtable)
+			if ok {
+				inp.Input(win, cam1)
+			}
+
+			upd, ok := ent.(updateable)
+			if ok {
+				upd.Update(dt)
+			}
 		}
 
 		// Clean up for new frame
@@ -133,7 +144,7 @@ func run() {
 		}))
 
 		// Draw transformed mobs
-		for _, mob := range gameMobiles.ByZ() {
+		for _, mob := range gameDrawables.ByDrawOrder() {
 			mob.Draw(p1view)
 		}
 

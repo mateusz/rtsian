@@ -37,7 +37,7 @@ func PatherBuildState() {
 		for x := 0; x < gameWorld.tiles.Width; x++ {
 			c, err := strconv.ParseFloat(gameWorld.tilesetTileAt(x, y).Properties.GetString("movd"), 64)
 			if err != nil {
-				c = 1.0
+				c = 10.0
 			}
 			patherMap[y*gameWorld.tiles.Width+x] = &patherNode{
 				X:    x,
@@ -46,7 +46,7 @@ func PatherBuildState() {
 			}
 		}
 	}
-	for _, m := range gameMobiles.List {
+	for _, m := range gamePositionables.List {
 		GetPatherNodeFromVec(pixel.Vec{X: m.GetX(), Y: m.GetY()}).Cost = 1000000000.0
 		u, ok := m.(*unit)
 		if !ok {
@@ -57,10 +57,10 @@ func PatherBuildState() {
 	}
 }
 
-func FindPath(m mobile, target pixel.Vec) (l *list.List) {
+func FindPath(p positionable, target pixel.Vec) (l *list.List) {
 	l = list.New()
 	path, _, found := astar.Path(
-		GetPatherNodeFromVec(pixel.Vec{X: m.GetX(), Y: m.GetY()}),
+		GetPatherNodeFromVec(pixel.Vec{X: p.GetX(), Y: p.GetY()}),
 		GetPatherNodeFromVec(target),
 	)
 	if !found {

@@ -1,10 +1,12 @@
 package main
 
 import (
-	"container/list"
+	"image/color"
 	"log"
 	"math"
 	"time"
+
+	"golang.org/x/image/colornames"
 
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
@@ -20,21 +22,41 @@ const (
 var (
 	mobsExplosionFrames = MOBS_EXPLOSION_END_ID - MOBS_EXPLOSION_START_ID + 1
 	rescueBottomPixels  = pixel.IM.Scaled(pixel.Vec{X: 8.0, Y: 8.0}, 1.01)
+	colorMap            = map[int]color.Color{
+		0: colornames.Pink,
+		1: colornames.Green,
+		2: colornames.Red,
+	}
 )
 
+type missile struct {
+}
+
 type unit struct {
-	position        pixel.Vec
-	target          pixel.Vec // position of current movement target
-	d               float64   // distance to current movement target
-	v               pixel.Vec // velocity vector
-	pathingTarget   pixel.Vec
-	pathing         *list.List
-	sprites         *spriteset
-	spriteID        uint32
-	selected        bool
-	exploding       bool
-	explodingSince  time.Time
-	stickyDirOffset uint32
+	mobile
+	sprites        *spriteset
+	spriteID       uint32
+	selected       bool
+	exploding      bool
+	explodingSince time.Time
+	missile        *missile
+	missileSince   time.Time
+	army           int
+	hp             float64
+}
+
+func NewUnit(position pixel.Vec, army int) unit {
+	u := unit{
+		mobile: mobile{
+			position:  position,
+			baseSpeed: 2.0,
+		},
+		sprites:  &mobSprites,
+		spriteID: MOBS_TANK_START_ID,
+		army:     army,
+		hp:       100.0,
+	}
+	return u
 }
 
 func UnitInput(win *pixelgl.Window, cam pixel.Matrix) {
@@ -42,18 +64,16 @@ func UnitInput(win *pixelgl.Window, cam pixel.Matrix) {
 
 	if win.JustPressed(pixelgl.KeyW) {
 		mpa := gameWorld.alignToTile(mp)
-		u := unit{
-			position: mpa,
-			sprites:  &mobSprites,
-			spriteID: MOBS_TANK_START_ID,
-		}
+		u := NewUnit(mpa, 1)
 		u.target = u.position
-		gameMobiles.Add(&u)
+		gameEntities.Add(&u)
+		gamePositionables.Add(&u)
+		gameDrawables.Add(&u)
 	}
 
 	if win.JustPressed(pixelgl.MouseButtonRight) {
-		for _, m := range gameMobiles.List {
-			u, ok := m.(*unit)
+		for _, ent := range gameEntities.List {
+			u, ok := ent.(*unit)
 			if !ok {
 				continue
 			}
@@ -66,8 +86,8 @@ func UnitInput(win *pixelgl.Window, cam pixel.Matrix) {
 	}
 
 	if win.JustPressed(pixelgl.KeyQ) {
-		for _, m := range gameMobiles.List {
-			u, ok := m.(*unit)
+		for _, ent := range gameEntities.List {
+			u, ok := ent.(*unit)
 			if !ok {
 				continue
 			}
@@ -83,7 +103,7 @@ func UnitInput(win *pixelgl.Window, cam pixel.Matrix) {
 
 	if win.JustPressed(pixelgl.MouseButtonLeft) {
 		selectConsumed := false
-		for _, m := range gameMobiles.ByReverseZ() {
+		for _, m := range gamePositionables.ByReverseZ() {
 			u, ok := m.(*unit)
 			if !ok {
 				continue
@@ -113,17 +133,13 @@ func (u *unit) Update(dt float64) {
 		explosionFrame := uint32(time.Now().Sub(u.explodingSince) / (100 * time.Millisecond))
 		if explosionFrame >= uint32(mobsExplosionFrames) {
 			// Totally exploded.
-			gameMobiles.Remove(u)
+			gameEntities.Remove(u)
+			gamePositionables.Remove(u)
+			gameDrawables.Remove(u)
 		}
 	}
-	if u.d > 0.0 {
-		u.position = u.position.Add(u.v)
-		u.d -= u.v.Len()
-	} else {
-		u.applyPath()
-	}
 
-	u.updateDirOffset()
+	u.mobile.Update(dt)
 }
 
 func (u *unit) applyPath() {
@@ -149,7 +165,7 @@ func (u *unit) applyPath() {
 	u.target = gameWorld.tileToVec(n.X, n.Y)
 	mv := u.target.Sub(u.position)
 	u.d = mv.Len()
-	u.v = mv.Unit().Scaled(1.0 / n.Cost)
+	u.v = mv.Unit().Scaled(u.baseSpeed / n.Cost)
 }
 
 func (u *unit) updateDirOffset() {
@@ -173,7 +189,11 @@ func (u *unit) updateDirOffset() {
 func (u *unit) Draw(t pixel.Target) {
 	explosionFrame := uint32(time.Now().Sub(u.explodingSince) / (100 * time.Millisecond))
 	if !u.exploding || explosionFrame < uint32(math.Ceil(float64(mobsExplosionFrames)/2.0)) {
-		u.sprites.sprites[u.spriteID+u.stickyDirOffset].Draw(t, rescueBottomPixels.Moved(u.position))
+		u.sprites.sprites[u.spriteID+u.stickyDirOffset].DrawColorMask(
+			t,
+			rescueBottomPixels.Moved(u.position),
+			colorMap[u.army],
+		)
 	}
 	if u.exploding {
 		if explosionFrame < uint32(mobsExplosionFrames) {
@@ -183,16 +203,4 @@ func (u *unit) Draw(t pixel.Target) {
 	if u.selected {
 		cursorSprites.sprites[CURSOR_UNIT_MARKER].Draw(t, rescueBottomPixels.Moved(u.position))
 	}
-}
-
-func (u *unit) GetZ() float64 {
-	return -u.position.Y
-}
-
-func (u *unit) GetY() float64 {
-	return u.position.Y
-}
-
-func (u *unit) GetX() float64 {
-	return u.position.X
 }

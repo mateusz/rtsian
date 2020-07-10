@@ -10,6 +10,7 @@ type player struct {
 	scrollSpeed   float64
 	scrollHotZone float64
 	scrolling     pixel.Vec
+	army          int
 }
 
 func (p *player) Update(dt float64) {

@@ -107,6 +107,10 @@
 </data>
  </layer>
  <objectgroup id="2" name="Units">
-  <object id="34" gid="38" x="656" y="624" width="16" height="16"/>
+  <object id="34" gid="38" x="656" y="624" width="16" height="16">
+   <properties>
+    <property name="army" value="2"/>
+   </properties>
+  </object>
  </objectgroup>
 </map>

@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	_ "image/png"
 
@@ -52,15 +53,17 @@ func loadObjects(m *tiled.Map) {
 		if err != nil {
 			log.Fatal(err)
 		}
+		army, err := strconv.Atoi(o.Properties.GetString("army"))
+		if err != nil {
+			army = 0
+		}
 		if lt.ID >= MOBS_TANK_START_ID && lt.ID < MOBS_TANK_START_ID+4 {
 			p := gameWorld.alignToTile(pixel.Vec{X: o.X + 10.0, Y: tiledFlipY(m, o.Y) + 10.0})
-			u := unit{
-				position: p,
-				sprites:  &mobSprites,
-				spriteID: MOBS_TANK_START_ID,
-			}
+			u := NewUnit(p, army)
 			u.target = u.position
-			gameMobiles.Add(&u)
+			gameEntities.Add(&u)
+			gamePositionables.Add(&u)
+			gameDrawables.Add(&u)
 		}
 	}
 }

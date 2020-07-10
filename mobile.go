@@ -1,55 +1,87 @@
 package main
 
 import (
-	"sort"
+	"container/list"
+	"log"
+	"math"
 
 	"github.com/faiface/pixel"
-	"github.com/faiface/pixel/pixelgl"
 )
 
-type mobile interface {
-	Input(win *pixelgl.Window, cam pixel.Matrix)
-	Update(dt float64)
-	Draw(pixel.Target)
-	GetZ() float64
-	GetX() float64
-	GetY() float64
+type mobile struct {
+	position        pixel.Vec
+	target          pixel.Vec // position of current movement target
+	d               float64   // distance to current movement target
+	v               pixel.Vec // velocity vector
+	pathingTarget   pixel.Vec
+	pathing         *list.List
+	stickyDirOffset uint32
+	baseSpeed       float64
 }
 
-type mobiles struct {
-	List []mobile
+func (m *mobile) Update(dt float64) {
+	if m.d > 0.0 {
+		m.position = m.position.Add(m.v)
+		m.d -= m.v.Len()
+	} else {
+		m.applyPath()
+	}
+
+	m.updateDirOffset()
 }
 
-func (m *mobiles) ByZ() []mobile {
-	mobs := m.List
-	sort.SliceStable(mobs, func(i, j int) bool {
-		return mobs[i].GetZ() < mobs[j].GetZ()
-	})
-	return mobs
+func (m *mobile) applyPath() {
+	if m.pathing == nil || m.pathing.Len() == 0 {
+		m.target = m.position
+		m.d = 0.0
+		m.v = pixel.ZV
+		m.pathing = nil
+		return
+	}
+
+	m.pathing = FindPath(m, m.pathingTarget)
+	if m.pathing.Len() == 0 {
+		return
+	}
+
+	// Next path step
+	n, ok := m.pathing.Remove(m.pathing.Front()).(*patherNode)
+	if !ok {
+		log.Panic("Fatal: pathing list contained non-patherNode!")
+	}
+
+	m.target = gameWorld.tileToVec(n.X, n.Y)
+	mv := m.target.Sub(m.position)
+	m.d = mv.Len()
+	m.v = mv.Unit().Scaled(m.baseSpeed / n.Cost)
 }
 
-func (m *mobiles) ByReverseZ() []mobile {
-	mobs := m.List
-	sort.SliceStable(mobs, func(i, j int) bool {
-		return mobs[i].GetZ() > mobs[j].GetZ()
-	})
-	return mobs
-}
-
-func (m *mobiles) Add(mob mobile) {
-	m.List = append(m.List, mob)
-}
-
-func (m *mobiles) Remove(mob mobile) {
-	for i, ml := range m.List {
-		if mob == ml {
-			copy(m.List[i:], m.List[i+1:])
-			m.List = m.List[:len(m.List)-1]
-			break
+func (m *mobile) updateDirOffset() {
+	if math.Abs(m.v.X) > math.Abs(m.v.Y) {
+		if m.v.X < 0 {
+			m.stickyDirOffset = 0
+		}
+		if m.v.X > 0 {
+			m.stickyDirOffset = 2
+		}
+	} else {
+		if m.v.Y > 0 {
+			m.stickyDirOffset = 1
+		}
+		if m.v.Y < 0 {
+			m.stickyDirOffset = 3
 		}
 	}
 }
 
-func (m *mobiles) Len() int {
-	return len(m.List)
+func (m *mobile) GetZ() float64 {
+	return -m.position.Y
+}
+
+func (m *mobile) GetX() float64 {
+	return m.position.X
+}
+
+func (m *mobile) GetY() float64 {
+	return m.position.Y
 }
