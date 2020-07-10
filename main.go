@@ -25,6 +25,7 @@ var (
 	gameEntities      entities
 	gameDrawables     drawables
 	gamePositionables positionables
+	gameMouseHits     []mouseHittable
 )
 
 func main() {
@@ -112,6 +113,24 @@ func run() {
 			Y: -p1.position.Y + p1view.Bounds().H()/2,
 		})
 		p1view.SetMatrix(cam1)
+
+		// Register mouse hits
+		gameMouseHits = gameMouseHits[:0]
+		mp := cam1.Unproject(win.MousePosition().Scaled(1.0 / pixSize))
+		for _, ent := range gameEntities.List {
+			hit, ok := ent.(mouseHittable)
+			if ok {
+				if mp.X > hit.GetX()-8 &&
+					mp.X < hit.GetX()+8 &&
+					mp.Y > hit.GetY()-8 &&
+					mp.Y < hit.GetY()+8 {
+					hit.MouseHit(win)
+					gameMouseHits = append(gameMouseHits, hit)
+				} else {
+					hit.MouseClear()
+				}
+			}
+		}
 
 		// Update world state
 		PatherBuildState()

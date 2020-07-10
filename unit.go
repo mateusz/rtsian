@@ -2,9 +2,7 @@ package main
 
 import (
 	"image/color"
-	"log"
 	"math"
-	"time"
 
 	"golang.org/x/image/colornames"
 
@@ -29,20 +27,14 @@ var (
 	}
 )
 
-type missile struct {
-}
-
 type unit struct {
 	mobile
-	sprites        *spriteset
-	spriteID       uint32
-	selected       bool
-	exploding      bool
-	explodingSince time.Time
-	missile        *missile
-	missileSince   time.Time
-	army           int
-	hp             float64
+	sprite
+	mouseTarget
+	exploding
+	selected bool
+	army     int
+	hp       float64
 }
 
 func NewUnit(position pixel.Vec, army int) unit {
@@ -51,20 +43,34 @@ func NewUnit(position pixel.Vec, army int) unit {
 			position:  position,
 			baseSpeed: 2.0,
 		},
-		sprites:  &mobSprites,
-		spriteID: MOBS_TANK_START_ID,
-		army:     army,
-		hp:       100.0,
+		sprite: sprite{
+			spriteset: &mobSprites,
+			spriteID:  MOBS_TANK_START_ID,
+		},
+		exploding: exploding{
+			sprite: sprite{
+				spriteset: &mobSprites,
+				spriteID:  MOBS_EXPLOSION_START_ID,
+			},
+		},
+		army: army,
 	}
 	return u
 }
 
 func UnitInput(win *pixelgl.Window, cam pixel.Matrix) {
 	mp := cam.Unproject(win.MousePosition().Scaled(1.0 / pixSize))
+	alignedMp := gameWorld.alignToTile(mp)
 
 	if win.JustPressed(pixelgl.KeyW) {
-		mpa := gameWorld.alignToTile(mp)
-		u := NewUnit(mpa, 1)
+		u := NewUnit(alignedMp, 1)
+		u.target = u.position
+		gameEntities.Add(&u)
+		gamePositionables.Add(&u)
+		gameDrawables.Add(&u)
+	}
+	if win.JustPressed(pixelgl.KeyE) {
+		u := NewUnit(alignedMp, 2)
 		u.target = u.position
 		gameEntities.Add(&u)
 		gamePositionables.Add(&u)
@@ -79,8 +85,18 @@ func UnitInput(win *pixelgl.Window, cam pixel.Matrix) {
 			}
 
 			if u.selected {
-				u.pathingTarget = mp
-				u.pathing = FindPath(u, u.pathingTarget)
+				if len(gameMouseHits) > 0 {
+					// Exclude self-shots
+					if !u.hitRight {
+						m := NewMissile(u.position, alignedMp)
+						gameEntities.Add(&m)
+						gamePositionables.Add(&m)
+						gameDrawables.Add(&m)
+					}
+				} else {
+					u.pathingTarget = mp
+					u.pathing = FindPath(u, u.pathingTarget)
+				}
 			}
 		}
 	}
@@ -94,9 +110,8 @@ func UnitInput(win *pixelgl.Window, cam pixel.Matrix) {
 
 			if u.selected {
 				u.selected = false
-				u.exploding = true
-				u.explodingSince = time.Now()
 				u.pathing = nil
+				u.startExploding()
 			}
 		}
 	}
@@ -108,12 +123,8 @@ func UnitInput(win *pixelgl.Window, cam pixel.Matrix) {
 			if !ok {
 				continue
 			}
-			if !selectConsumed &&
-				mp.X > u.position.X-u.sprites.sprites[u.spriteID].Frame().W()/2.0 &&
-				mp.X < u.position.X+u.sprites.sprites[u.spriteID].Frame().W()/2.0 &&
-				mp.Y > u.position.Y-u.sprites.sprites[u.spriteID].Frame().H()/2.0 &&
-				mp.Y < u.position.Y+u.sprites.sprites[u.spriteID].Frame().H()/2.0 {
-				// Hit
+
+			if !selectConsumed && u.mouseTarget.hitLeft {
 				u.selected = !u.selected
 				selectConsumed = true
 			} else {
@@ -129,77 +140,25 @@ func (u *unit) Input(win *pixelgl.Window, cam pixel.Matrix) {
 }
 
 func (u *unit) Update(dt float64) {
-	if u.exploding {
-		explosionFrame := uint32(time.Now().Sub(u.explodingSince) / (100 * time.Millisecond))
-		if explosionFrame >= uint32(mobsExplosionFrames) {
-			// Totally exploded.
-			gameEntities.Remove(u)
-			gamePositionables.Remove(u)
-			gameDrawables.Remove(u)
-		}
+	if u.totallyExploded() {
+		gameEntities.Remove(u)
+		gamePositionables.Remove(u)
+		gameDrawables.Remove(u)
 	}
 
 	u.mobile.Update(dt)
 }
 
-func (u *unit) applyPath() {
-	if u.pathing == nil || u.pathing.Len() == 0 {
-		u.target = u.position
-		u.d = 0.0
-		u.v = pixel.ZV
-		u.pathing = nil
-		return
-	}
-
-	u.pathing = FindPath(u, u.pathingTarget)
-	if u.pathing.Len() == 0 {
-		return
-	}
-
-	// Next path step
-	n, ok := u.pathing.Remove(u.pathing.Front()).(*patherNode)
-	if !ok {
-		log.Panic("Fatal: pathing list contained non-patherNode!")
-	}
-
-	u.target = gameWorld.tileToVec(n.X, n.Y)
-	mv := u.target.Sub(u.position)
-	u.d = mv.Len()
-	u.v = mv.Unit().Scaled(u.baseSpeed / n.Cost)
-}
-
-func (u *unit) updateDirOffset() {
-	if math.Abs(u.v.X) > math.Abs(u.v.Y) {
-		if u.v.X < 0 {
-			u.stickyDirOffset = 0
-		}
-		if u.v.X > 0 {
-			u.stickyDirOffset = 2
-		}
-	} else {
-		if u.v.Y > 0 {
-			u.stickyDirOffset = 1
-		}
-		if u.v.Y < 0 {
-			u.stickyDirOffset = 3
-		}
-	}
-}
-
 func (u *unit) Draw(t pixel.Target) {
-	explosionFrame := uint32(time.Now().Sub(u.explodingSince) / (100 * time.Millisecond))
-	if !u.exploding || explosionFrame < uint32(math.Ceil(float64(mobsExplosionFrames)/2.0)) {
-		u.sprites.sprites[u.spriteID+u.stickyDirOffset].DrawColorMask(
+	explosionFrame := u.explosionFrame()
+	if !u.exploding.exploding || explosionFrame < uint32(math.Ceil(float64(mobsExplosionFrames)/2.0)) {
+		u.spriteset.sprites[u.spriteID+u.stickyDirOffset].DrawColorMask(
 			t,
 			rescueBottomPixels.Moved(u.position),
 			colorMap[u.army],
 		)
 	}
-	if u.exploding {
-		if explosionFrame < uint32(mobsExplosionFrames) {
-			u.sprites.sprites[MOBS_EXPLOSION_START_ID+explosionFrame].Draw(t, rescueBottomPixels.Moved(u.position))
-		}
-	}
+	u.drawExplosion(t, u.position)
 	if u.selected {
 		cursorSprites.sprites[CURSOR_UNIT_MARKER].Draw(t, rescueBottomPixels.Moved(u.position))
 	}

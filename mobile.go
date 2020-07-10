@@ -23,6 +23,9 @@ func (m *mobile) Update(dt float64) {
 	if m.d > 0.0 {
 		m.position = m.position.Add(m.v)
 		m.d -= m.v.Len()
+		if m.d < 0.0 {
+			m.position = m.target
+		}
 	} else {
 		m.applyPath()
 	}

@@ -29,6 +29,16 @@ type positionable interface {
 	GetY() float64
 }
 
+type mouseHittable interface {
+	positionable
+	MouseHit(*pixelgl.Window)
+	MouseClear()
+}
+
+type explodable interface {
+	startExploding()
+}
+
 type entities struct {
 	List []entity
 }
