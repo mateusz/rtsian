@@ -133,7 +133,6 @@ func run() {
 		}
 
 		// Update world state
-		PatherBuildState()
 		UnitInput(win, cam1)
 		p1.Input(win, cam1)
 		p1.Update(dt)

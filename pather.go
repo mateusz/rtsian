@@ -32,7 +32,7 @@ func GetPatherNodeFromVec(v pixel.Vec) *patherNode {
 	return GetPatherNode(x, y)
 }
 
-func PatherBuildState() {
+func PatherBuildState(collisionArea pixel.Rect) {
 	for y := 0; y < gameWorld.tiles.Height; y++ {
 		for x := 0; x < gameWorld.tiles.Width; x++ {
 			c, err := strconv.ParseFloat(gameWorld.tilesetTileAt(x, y).Properties.GetString("movd"), 64)
@@ -47,7 +47,11 @@ func PatherBuildState() {
 		}
 	}
 	for _, m := range gamePositionables.List {
-		GetPatherNodeFromVec(pixel.Vec{X: m.GetX(), Y: m.GetY()}).Cost = 1000000000.0
+		mv := pixel.Vec{X: m.GetX(), Y: m.GetY()}
+		if !collisionArea.Contains(mv) {
+			continue
+		}
+		GetPatherNodeFromVec(mv).Cost = 1000000000.0
 		u, ok := m.(*unit)
 		if !ok {
 			continue
@@ -58,6 +62,12 @@ func PatherBuildState() {
 }
 
 func FindPath(p positionable, target pixel.Vec) (l *list.List) {
+	apos := gameWorld.alignToTile(pixel.Vec{X: p.GetX(), Y: p.GetY()})
+	collisionRange := 64.0
+	PatherBuildState(pixel.Rect{
+		Min: pixel.Vec{X: apos.X - collisionRange, Y: apos.Y - collisionRange},
+		Max: pixel.Vec{X: apos.Y + collisionRange, Y: apos.Y + collisionRange},
+	})
 	l = list.New()
 	path, _, found := astar.Path(
 		GetPatherNodeFromVec(pixel.Vec{X: p.GetX(), Y: p.GetY()}),
