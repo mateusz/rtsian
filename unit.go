@@ -8,6 +8,7 @@ import (
 
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
+	"github.com/mateusz/rtsian/piksele"
 )
 
 const (
@@ -29,7 +30,7 @@ var (
 
 type unit struct {
 	mobile
-	sprite
+	piksele.Sprite
 	mouseTarget
 	exploding
 	selected bool
@@ -43,14 +44,14 @@ func NewUnit(position pixel.Vec, army int) unit {
 			position:  position,
 			baseSpeed: 2.0,
 		},
-		sprite: sprite{
-			spriteset: &mobSprites,
-			spriteID:  MOBS_TANK_START_ID,
+		Sprite: piksele.Sprite{
+			Spriteset: &mobSprites,
+			SpriteID:  MOBS_TANK_START_ID,
 		},
 		exploding: exploding{
-			sprite: sprite{
-				spriteset: &mobSprites,
-				spriteID:  MOBS_EXPLOSION_START_ID,
+			Sprite: piksele.Sprite{
+				Spriteset: &mobSprites,
+				SpriteID:  MOBS_EXPLOSION_START_ID,
 			},
 		},
 		army: army,
@@ -60,7 +61,7 @@ func NewUnit(position pixel.Vec, army int) unit {
 
 func UnitInput(win *pixelgl.Window, cam pixel.Matrix) {
 	mp := cam.Unproject(win.MousePosition().Scaled(1.0 / pixSize))
-	alignedMp := gameWorld.alignToTile(mp)
+	alignedMp := gameWorld.AlignToTile(mp)
 
 	if win.JustPressed(pixelgl.KeyW) {
 		u := NewUnit(alignedMp, 1)
@@ -152,7 +153,7 @@ func (u *unit) Update(dt float64) {
 func (u *unit) Draw(t pixel.Target) {
 	explosionFrame := u.explosionFrame()
 	if !u.exploding.exploding || explosionFrame < uint32(math.Ceil(float64(mobsExplosionFrames)/2.0)) {
-		u.spriteset.sprites[u.spriteID+u.stickyDirOffset].DrawColorMask(
+		u.Spriteset.Sprites[u.SpriteID+u.stickyDirOffset].DrawColorMask(
 			t,
 			rescueBottomPixels.Moved(u.position),
 			colorMap[u.army],
@@ -160,6 +161,6 @@ func (u *unit) Draw(t pixel.Target) {
 	}
 	u.drawExplosion(t, u.position)
 	if u.selected {
-		cursorSprites.sprites[CURSOR_UNIT_MARKER].Draw(t, rescueBottomPixels.Moved(u.position))
+		cursorSprites.Sprites[CURSOR_UNIT_MARKER].Draw(t, rescueBottomPixels.Moved(u.position))
 	}
 }

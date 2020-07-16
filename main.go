@@ -2,13 +2,17 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
+	"github.com/lafriks/go-tiled"
+	"github.com/mateusz/rtsian/piksele"
 	"golang.org/x/image/colornames"
 )
 
@@ -17,10 +21,10 @@ var (
 	monW              float64
 	monH              float64
 	pixSize           float64
-	mobSprites        spriteset
-	cursorSprites     spriteset
+	mobSprites        piksele.Spriteset
+	cursorSprites     piksele.Spriteset
 	p1                player
-	gameWorld         world
+	gameWorld         piksele.World
 	gameHud           hud
 	gameEntities      entities
 	gameDrawables     drawables
@@ -38,26 +42,26 @@ func main() {
 		os.Exit(2)
 	}
 
-	gameWorld = world{}
-	gameWorld.load()
+	gameWorld = piksele.World{}
+	gameWorld.Load(fmt.Sprintf("%s/../assets/world.tmx", workDir))
 
-	mobSprites, err = newSpritesetFromTsx(fmt.Sprintf("%s/../assets", workDir), "mobs.tsx")
+	mobSprites, err = piksele.NewSpritesetFromTsx(fmt.Sprintf("%s/../assets", workDir), "mobs.tsx")
 	if err != nil {
 		fmt.Printf("Error loading mobs: %s\n", err)
 		os.Exit(2)
 	}
 
-	loadObjects(gameWorld.tiles)
+	loadObjects(gameWorld.Tiles)
 
-	cursorSprites, err = newSpritesetFromTsx(fmt.Sprintf("%s/../assets", workDir), "cursors.tsx")
+	cursorSprites, err = piksele.NewSpritesetFromTsx(fmt.Sprintf("%s/../assets", workDir), "cursors.tsx")
 	if err != nil {
 		fmt.Printf("Error loading cursors: %s\n", err)
 		os.Exit(2)
 	}
 
 	p1.position = pixel.Vec{
-		X: float64(gameWorld.pixelWidth()) / 2.0,
-		Y: float64(gameWorld.pixelHeight()) / 2.0,
+		X: float64(gameWorld.PixelWidth()) / 2.0,
+		Y: float64(gameWorld.PixelHeight()) / 2.0,
 	}
 	p1.scrollSpeed = 200.0
 	p1.scrollHotZone = 10.0
@@ -91,7 +95,7 @@ func run() {
 	win.SetMatrix(pixel.IM.Scaled(pixel.ZV, pixSize))
 	win.SetMousePosition(pixel.Vec{X: monW / 2.0, Y: monH / 2.0})
 
-	mapCanvas := pixelgl.NewCanvas(pixel.R(0, 0, float64(gameWorld.pixelWidth()), float64(gameWorld.pixelHeight())))
+	mapCanvas := pixelgl.NewCanvas(pixel.R(0, 0, float64(gameWorld.PixelWidth()), float64(gameWorld.PixelHeight())))
 	gameWorld.Draw(mapCanvas)
 
 	p1view := pixelgl.NewCanvas(pixel.R(0, 0, monW/pixSize, monH/pixSize))
@@ -180,5 +184,26 @@ func run() {
 
 		// Present frame!
 		win.Update()
+	}
+}
+
+func loadObjects(m *tiled.Map) {
+	for _, o := range m.ObjectGroups[0].Objects {
+		lt, err := m.TileGIDToTile(o.GID)
+		if err != nil {
+			log.Fatal(err)
+		}
+		army, err := strconv.Atoi(o.Properties.GetString("army"))
+		if err != nil {
+			army = 0
+		}
+		if lt.ID >= MOBS_TANK_START_ID && lt.ID < MOBS_TANK_START_ID+4 {
+			p := gameWorld.AlignToTile(pixel.Vec{X: o.X + 10.0, Y: piksele.TiledFlipY(m, o.Y) + 10.0})
+			u := NewUnit(p, army)
+			u.target = u.position
+			gameEntities.Add(&u)
+			gamePositionables.Add(&u)
+			gameDrawables.Add(&u)
+		}
 	}
 }

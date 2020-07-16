@@ -53,7 +53,7 @@ func (m *mobile) applyPath() {
 		log.Panic("Fatal: pathing list contained non-patherNode!")
 	}
 
-	m.target = gameWorld.tileToVec(n.X, n.Y)
+	m.target = gameWorld.TileToVec(n.X, n.Y)
 	mv := m.target.Sub(m.position)
 	m.d = mv.Len()
 	m.v = mv.Unit().Scaled(m.baseSpeed / n.Cost)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/faiface/pixel"
+	"github.com/mateusz/rtsian/piksele"
 )
 
 const (
@@ -10,7 +11,7 @@ const (
 
 type missile struct {
 	mobile
-	sprite
+	piksele.Sprite
 }
 
 func NewMissile(position pixel.Vec, target pixel.Vec) missile {
@@ -22,9 +23,9 @@ func NewMissile(position pixel.Vec, target pixel.Vec) missile {
 			d:        mv.Len(),
 			v:        mv.Unit().Scaled(10.0),
 		},
-		sprite: sprite{
-			spriteset: &mobSprites,
-			spriteID:  MOBS_MISSILE_START_ID,
+		Sprite: piksele.Sprite{
+			Spriteset: &mobSprites,
+			SpriteID:  MOBS_MISSILE_START_ID,
 		},
 	}
 	return m
@@ -53,5 +54,5 @@ func (m *missile) Update(dt float64) {
 }
 
 func (m *missile) Draw(t pixel.Target) {
-	m.spriteset.sprites[m.spriteID].Draw(t, rescueBottomPixels.Moved(m.position))
+	m.Spriteset.Sprites[m.SpriteID].Draw(t, rescueBottomPixels.Moved(m.position))
 }

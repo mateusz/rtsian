@@ -20,26 +20,26 @@ type patherNode struct {
 }
 
 func PatherInit() {
-	patherMap = make([]*patherNode, len(gameWorld.tiles.Layers[0].Tiles))
+	patherMap = make([]*patherNode, len(gameWorld.Tiles.Layers[0].Tiles))
 }
 
 func GetPatherNode(x, y int) *patherNode {
-	return patherMap[y*gameWorld.tiles.Width+x]
+	return patherMap[y*gameWorld.Tiles.Width+x]
 }
 
 func GetPatherNodeFromVec(v pixel.Vec) *patherNode {
-	x, y := gameWorld.vecToTile(v)
+	x, y := gameWorld.VecToTile(v)
 	return GetPatherNode(x, y)
 }
 
 func PatherBuildState(collisionArea pixel.Rect) {
-	for y := 0; y < gameWorld.tiles.Height; y++ {
-		for x := 0; x < gameWorld.tiles.Width; x++ {
-			c, err := strconv.ParseFloat(gameWorld.tilesetTileAt(x, y).Properties.GetString("movd"), 64)
+	for y := 0; y < gameWorld.Tiles.Height; y++ {
+		for x := 0; x < gameWorld.Tiles.Width; x++ {
+			c, err := strconv.ParseFloat(gameWorld.TilesetTileAt(x, y).Properties.GetString("movd"), 64)
 			if err != nil {
 				c = 10.0
 			}
-			patherMap[y*gameWorld.tiles.Width+x] = &patherNode{
+			patherMap[y*gameWorld.Tiles.Width+x] = &patherNode{
 				X:    x,
 				Y:    y,
 				Cost: c,
@@ -47,11 +47,11 @@ func PatherBuildState(collisionArea pixel.Rect) {
 		}
 	}
 	for _, m := range gamePositionables.List {
-		mv := pixel.Vec{X: m.GetX(), Y: m.GetY()}
-		if !collisionArea.Contains(mv) {
+		mvec := pixel.Vec{X: m.GetX(), Y: m.GetY()}
+		if !collisionArea.Contains(mvec) {
 			continue
 		}
-		GetPatherNodeFromVec(mv).Cost = 1000000000.0
+		GetPatherNodeFromVec(mvec).Cost = 1000000000.0
 		u, ok := m.(*unit)
 		if !ok {
 			continue
@@ -62,11 +62,11 @@ func PatherBuildState(collisionArea pixel.Rect) {
 }
 
 func FindPath(p positionable, target pixel.Vec) (l *list.List) {
-	apos := gameWorld.alignToTile(pixel.Vec{X: p.GetX(), Y: p.GetY()})
-	collisionRange := 64.0
+	apos := gameWorld.AlignToTile(pixel.Vec{X: p.GetX(), Y: p.GetY()})
+	collisionRange := 24.0
 	PatherBuildState(pixel.Rect{
 		Min: pixel.Vec{X: apos.X - collisionRange, Y: apos.Y - collisionRange},
-		Max: pixel.Vec{X: apos.Y + collisionRange, Y: apos.Y + collisionRange},
+		Max: pixel.Vec{X: apos.X + collisionRange, Y: apos.Y + collisionRange},
 	})
 	l = list.New()
 	path, _, found := astar.Path(
@@ -93,7 +93,7 @@ func (n *patherNode) PathNeighbors() []astar.Pather {
 			ns = append(ns, pn)
 		}
 	}
-	if n.X < gameWorld.tiles.Width-1 {
+	if n.X < gameWorld.Tiles.Width-1 {
 		pn := GetPatherNode(n.X+1, n.Y)
 		if pn.Cost < 1000.0 {
 			ns = append(ns, pn)
@@ -105,7 +105,7 @@ func (n *patherNode) PathNeighbors() []astar.Pather {
 			ns = append(ns, pn)
 		}
 	}
-	if n.Y < gameWorld.tiles.Height-1 {
+	if n.Y < gameWorld.Tiles.Height-1 {
 		pn := GetPatherNode(n.X, n.Y+1)
 		if pn.Cost < 1000.0 {
 			ns = append(ns, pn)

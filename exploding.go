@@ -4,10 +4,11 @@ import (
 	"time"
 
 	"github.com/faiface/pixel"
+	"github.com/mateusz/rtsian/piksele"
 )
 
 type exploding struct {
-	sprite
+	piksele.Sprite
 	exploding      bool
 	explodingSince time.Time
 }
@@ -39,6 +40,6 @@ func (e *exploding) drawExplosion(t pixel.Target, p pixel.Vec) {
 
 	explosionFrame := uint32(time.Now().Sub(e.explodingSince) / (100 * time.Millisecond))
 	if explosionFrame < uint32(mobsExplosionFrames) {
-		e.spriteset.sprites[e.spriteID+explosionFrame].Draw(t, rescueBottomPixels.Moved(p))
+		e.Spriteset.Sprites[e.SpriteID+explosionFrame].Draw(t, rescueBottomPixels.Moved(p))
 	}
 }
